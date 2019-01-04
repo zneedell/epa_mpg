@@ -93,10 +93,44 @@ def flatten(y):
     _flatten(y)
     return out
 
+def filter_json(js):
+    return {
+        'ABS': js['ABS'],
+        'BodyCabType': js['BodyCabType'],
+        'BodyClass': js['BodyClass'],
+        'BrakeSystemType': js['BrakeSystemType'],
+        'DisplacementCC': js['DisplacementCC'],
+        'DisplacementCI': js['DisplacementCI'],
+        'DisplacementL': js['DisplacementL'],
+        'DriveType': js['DriveType'],
+        'EngineConfiguration': js['EngineConfiguration'],
+        'EngineCylinders': js['EngineCylinders'],
+        'EngineManufacturer': js['EngineManufacturer'],
+        'EngineModel': js['EngineModel'],
+        'ErrorCode': js['ErrorCode'],
+        'FuelInjectionType': js['FuelInjectionType'],
+        'FuelTypePrimary': js['FuelTypePrimary'],
+        'GVWR': js['GVWR'],
+        'Make': js['Make'],
+        'Manufacturer': js['Manufacturer'],
+        'ManufacturerId': js['ManufacturerId'],
+        'Model': js['Model'],
+        'ModelYear': js['ModelYear'],
+        'PlantCity': js['PlantCity'],
+        'PlantCompanyName': js['PlantCompanyName'],
+        'PlantCountry': js['PlantCountry'],
+        'PlantState': js['PlantState'],
+        'Series': js['Series'],
+        'Turbo': js['Turbo'],
+        'VIN': js['VIN'],
+        'VehicleType': js['VehicleType']
+    }
 
 def get_json(vin):
     base_url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/{}?format=json&modelyear={}'
-    url = base_url.format(vin, vinlib.Vin(vin).year)
+    year = vinlib.Vin(vin).year
+    url = base_url.format(vin, year)
+    #print("vin {}: year {}".format(vin, year))
 
     # based on https://stackoverflow.com/questions/23013220/max-retries-exceeded-with-url
     session = requests.Session()
@@ -107,7 +141,7 @@ def get_json(vin):
 
     try:
         js = json.loads(session.get(url).text)
-        return OrderedDict(flatten(js))
+        return OrderedDict(flatten(filter_json(js)))
     except:
         return {}
 
@@ -148,8 +182,11 @@ def get_data_parallel_stream(vin_list, vin_file_path=r'data/out_parallel.csv'):
             wr.writerow(list(js.values()))
             progress_bar = i / n
             time_step = 30*60
-            if (datetime.now()-datetime(2018, 12, 20)).total_seconds() % time_step == 0:
-                print >> sys.stderr, '\rDone {:.3%} : {}/{}'.format(progress_bar, i, n)
+            if i%5000 == 0:
+                print("=> {}".format(i))
+            print("vin {}: year {}".format(vin, year))
+            #if (datetime.now()-datetime(2018, 12, 20)).total_seconds() % time_step == 0:
+            #    print >> sys.stderr, '\rDone {:.3%} : {}/{}'.format(progress_bar, i, n)
             #sys.stderr.write('\rDone {:.3%}'.format(i / n))
 
 
