@@ -182,9 +182,8 @@ def get_data_parallel_stream(vin_list, vin_file_path=r'data/out_parallel.csv'):
             wr.writerow(list(js.values()))
             progress_bar = i / n
             time_step = 30*60
-            if i%5000 == 0:
-                print("=> {}".format(i))
-            print("vin {}: year {}".format(vin, year))
+            if i % 5000 == 0:
+                print("milestone {} - progress {:.3%}".format(i, i/n))
             #if (datetime.now()-datetime(2018, 12, 20)).total_seconds() % time_step == 0:
             #    print >> sys.stderr, '\rDone {:.3%} : {}/{}'.format(progress_bar, i, n)
             #sys.stderr.write('\rDone {:.3%}'.format(i / n))
