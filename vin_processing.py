@@ -200,10 +200,8 @@ def get_data_stream(vin_list, file_path):
             if js != {}:
                 if i == 0:
                     wr.writerow(list(js.keys()))
-                    print(list(js.keys()))
                 wr.writerow(list(js.values()))
                 sys.stderr.write('\rDone {}/{}={:.3%}'.format(i, n, float(i) / n))
-                print(list(js.values()))
             else:
                 missing_vins += vin
     return missing_vins
