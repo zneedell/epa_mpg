@@ -18,7 +18,8 @@ from sqlalchemy import create_engine, MetaData, Table, Column
 from sqlite3 import OperationalError
 import vinlib
 
-import xlwings as xl
+#import xlwings as xl
+import xlrd as xl
 
 db_name = r'data/epa_mpg.sqlite'
 engine = create_engine(r"sqlite:///{}".format(db_name), encoding='utf-8')
@@ -93,44 +94,46 @@ def flatten(y):
     _flatten(y)
     return out
 
+def get_and_encode(js, elem):
+    return js['Results'][0][elem].encode("utf-8")
+
 def filter_json(js):
     return {
-        'ABS': js['ABS'],
-        'BodyCabType': js['BodyCabType'],
-        'BodyClass': js['BodyClass'],
-        'BrakeSystemType': js['BrakeSystemType'],
-        'DisplacementCC': js['DisplacementCC'],
-        'DisplacementCI': js['DisplacementCI'],
-        'DisplacementL': js['DisplacementL'],
-        'DriveType': js['DriveType'],
-        'EngineConfiguration': js['EngineConfiguration'],
-        'EngineCylinders': js['EngineCylinders'],
-        'EngineManufacturer': js['EngineManufacturer'],
-        'EngineModel': js['EngineModel'],
-        'ErrorCode': js['ErrorCode'],
-        'FuelInjectionType': js['FuelInjectionType'],
-        'FuelTypePrimary': js['FuelTypePrimary'],
-        'GVWR': js['GVWR'],
-        'Make': js['Make'],
-        'Manufacturer': js['Manufacturer'],
-        'ManufacturerId': js['ManufacturerId'],
-        'Model': js['Model'],
-        'ModelYear': js['ModelYear'],
-        'PlantCity': js['PlantCity'],
-        'PlantCompanyName': js['PlantCompanyName'],
-        'PlantCountry': js['PlantCountry'],
-        'PlantState': js['PlantState'],
-        'Series': js['Series'],
-        'Turbo': js['Turbo'],
-        'VIN': js['VIN'],
-        'VehicleType': js['VehicleType']
+        'ABS': get_and_encode(js, 'ABS'),
+        'BodyCabType': get_and_encode(js, 'BodyCabType'),
+        'BodyClass': get_and_encode(js, 'BodyClass'),
+        'BrakeSystemType': get_and_encode(js, 'BrakeSystemType'),
+        'DisplacementCC': get_and_encode(js, 'DisplacementCC'),
+        'DisplacementCI': get_and_encode(js, 'DisplacementCI'),
+        'DisplacementL': get_and_encode(js, 'DisplacementL'),
+        'DriveType': get_and_encode(js, 'DriveType'),
+        'EngineConfiguration': get_and_encode(js, 'EngineConfiguration'),
+        'EngineCylinders': get_and_encode(js, 'EngineCylinders'),
+        'EngineManufacturer': get_and_encode(js, 'EngineManufacturer'),
+        'EngineModel': get_and_encode(js, 'EngineModel'),
+        'ErrorCode': get_and_encode(js, 'ErrorCode'),
+        'FuelInjectionType': get_and_encode(js, 'FuelInjectionType'),
+        'FuelTypePrimary': get_and_encode(js, 'FuelTypePrimary'),
+        'GVWR': get_and_encode(js, 'GVWR'),
+        'Make': get_and_encode(js, 'Make'),
+        'Manufacturer': get_and_encode(js, 'Manufacturer'),
+        'ManufacturerId': get_and_encode(js, 'ManufacturerId'),
+        'Model': get_and_encode(js, 'Model'),
+        'ModelYear': get_and_encode(js, 'ModelYear'),
+        'PlantCity': get_and_encode(js, 'PlantCity'),
+        'PlantCompanyName': get_and_encode(js, 'PlantCompanyName'),
+        'PlantCountry': get_and_encode(js, 'PlantCountry'),
+        'PlantState': get_and_encode(js, 'PlantState'),
+        'Series': get_and_encode(js, 'Series'),
+        'Turbo': get_and_encode(js, 'Turbo'),
+        'VIN': get_and_encode(js, 'VIN'),
+        'VehicleType': get_and_encode(js, 'VehicleType')
     }
 
 def get_json(vin):
     base_url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/{}?format=json&modelyear={}'
     year = vinlib.Vin(vin).year
     url = base_url.format(vin, year)
-    #print("vin {}: year {}".format(vin, year))
 
     # based on https://stackoverflow.com/questions/23013220/max-retries-exceeded-with-url
     session = requests.Session()
@@ -140,8 +143,10 @@ def get_json(vin):
     session.mount('https://', adapter)
 
     try:
+        print url
         js = json.loads(session.get(url).text)
-        return OrderedDict(flatten(filter_json(js)))
+        js_ = filter_json(js)
+        return OrderedDict(flatten(js_))
     except:
         return {}
 
@@ -172,21 +177,36 @@ def get_data_parallel():
     df.to_csv('out_parallel_in_memory.csv')
 
 
-def get_data_parallel_stream(vin_list, vin_file_path=r'data/out_parallel.csv'):
+def get_data_parallel_stream(vin_list, file_path):
     p = Pool(cpu_count())
     n = len(vin_list)
-    with open(vin_file_path, 'w+b') as f:
+    print "write {} vins to {}".format(n, file_path)
+    with open(file_path, 'w+b') as f:
         wr = UnicodeWriter(f, quoting=csv.QUOTE_ALL)
         wr.writerow(list(get_json(vin_list[0]).keys()))
         for i, js in enumerate(p.imap_unordered(get_json, vin_list), 1):
             wr.writerow(list(js.values()))
-            progress_bar = i / n
-            time_step = 30*60
-            if i % 5000 == 0:
-                print("milestone {} - progress {:.3%}".format(i, i/n))
-            #if (datetime.now()-datetime(2018, 12, 20)).total_seconds() % time_step == 0:
-            #    print >> sys.stderr, '\rDone {:.3%} : {}/{}'.format(progress_bar, i, n)
-            #sys.stderr.write('\rDone {:.3%}'.format(i / n))
+            sys.stderr.write('\rDone {}/{}={:.3%}'.format(i, n, float(i) / n))
+            print(list(js.values()))
+
+def get_data_stream(vin_list, file_path):
+    n = len(vin_list)
+    missing_vins = []
+    with open(file_path, 'wb') as f:
+        #wr = UnicodeWriter(f, quoting=csv.QUOTE_ALL)
+        wr = csv.writer(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        for i, vin in enumerate(vin_list):
+            js = get_json(vin)
+            if js != {}:
+                if i == 0:
+                    wr.writerow(list(js.keys()))
+                    print(list(js.keys()))
+                wr.writerow(list(js.values()))
+                sys.stderr.write('\rDone {}/{}={:.3%}'.format(i, n, float(i) / n))
+                print(list(js.values()))
+            else:
+                missing_vins += vin
+    return missing_vins
 
 
 def take_out_results_string(file_path):
@@ -198,7 +218,7 @@ def take_out_results_string(file_path):
     Example:
         turns u'Results_0_BatteryA' into 'BatteryA'
     """
-    book = xl.Book(file_path)
+    book = xl.open_workbook(file_path)
     sheet = book.sheets[0]
     rg0 = sheet.range('A1')
     rg1 = rg0.end('right')
@@ -209,7 +229,7 @@ def take_out_results_string(file_path):
 
 
 # Another way to remove the string 'Results_0_' from the csv file. 
-def fix_column_names(vin_df, vin_file_path=r"data/out_parallel.csv", change_in_file=False):
+def fix_column_names(vin_df, file_path, change_in_file=False):
     cols_mod = []
     for col in vin_df.columns:
         match = re.search('Results_0_(.+)', col)
@@ -218,26 +238,26 @@ def fix_column_names(vin_df, vin_file_path=r"data/out_parallel.csv", change_in_f
         else:
             cols_mod.append(col)
     if change_in_file:
-        wb = vp.xl.Book(vin_file_path)
-        vin_file_name = os.path.basename(vin_file_path).split('.')[0]
+        wb = vp.xl.Book(file_path)
+        vin_file_name = os.path.basename(file_path).split('.')[0]
         wb.sheets(vin_file_name).range("A1").value = cols_mod
     return cols_mod
 
 
-vin_file_name = 'out_missing'
-vin_file_path = r"data/{}.csv".format(vin_file_name)
+# vin_file_name = 'out_missing'
+# vin_file_path = r"data/{}.csv".format(vin_file_name)
 
 
-def fix_vin_output_file(vin_file_path):
+def fix_vin_output_file(file_path):
     """Remove extra columns from the file that was just read based on the existing SQL table that contains the VINs.
     
     Args:
-        vin_file_path (TYPE): Description
+        file_path (TYPE): Description
     
     Returns:
         TYPE: Description
     """
-    vin_df = pd.read_csv(vin_file_path, dtype=str, encoding='utf8')
+    vin_df = pd.read_csv(file_path, dtype=str, encoding='utf8')
     vin_df.columns = fix_column_names(vin_df)
     # create a session
     Session = sessionmaker(bind=vp.engine)
@@ -273,8 +293,8 @@ def get_counts(put_in_db=True, file_path=None, file_name='txsafe18', if_exists='
     return counts_with_vins
 
 
-def add_vtyp(vin_file_path, vtyp_file_path=r"data/vtyp_no_dupes.csv", if_exists='append'):
-    vin_df = pd.read_csv(vin_file_path, dtype=str, encoding='utf8')
+def add_vtyp(file_path, vtyp_file_path=r"data/vtyp_no_dupes.csv", if_exists='append'):
+    vin_df = pd.read_csv(file_path, dtype=str, encoding='utf8')
     # Get rid of rows with errors. 
     vin_df.dropna(subset=['VIN'], inplace=True)
     vin_df['vin8'] = vin_df['VIN'].apply(lambda s: s[:8])
