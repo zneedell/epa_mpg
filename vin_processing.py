@@ -143,7 +143,6 @@ def get_json(vin):
     session.mount('https://', adapter)
 
     try:
-        print url
         js = json.loads(session.get(url).text)
         js_ = filter_json(js)
         return OrderedDict(flatten(js_))
