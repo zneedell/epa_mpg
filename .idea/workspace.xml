@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0c9d5f02-a198-4bfc-897a-bfca5b20639b" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vin_processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/vin_processing.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -24,8 +25,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/vin_processing.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="487">
-              <caret line="144" column="8" selection-start-line="144" selection-start-column="8" selection-end-line="144" selection-end-column="8" />
+            <state relative-caret-position="308">
+              <caret line="139" column="47" selection-start-line="139" selection-start-column="47" selection-end-line="139" selection-end-column="47" />
               <folding>
                 <element signature="e#25#34#0" expanded="true" />
               </folding>
@@ -324,19 +325,9 @@
     <entry file="file://$PROJECT_DIR$/data/txsafe18.txt">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/data/out_parallel_1.csv">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
-          <caret line="1" column="397" lean-forward="true" selection-start-line="1" selection-start-column="393" selection-end-line="1" selection-end-column="400" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/data/out_parallel_2.csv">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/data/out_parallel_3.csv">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/data/out_parallel_1.csv" />
+    <entry file="file://$PROJECT_DIR$/data/out_parallel_2.csv" />
+    <entry file="file://$PROJECT_DIR$/data/out_parallel_3.csv" />
     <entry file="file://$PROJECT_DIR$/vin_processing.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
@@ -356,8 +347,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/vin_processing.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="487">
-          <caret line="144" column="8" selection-start-line="144" selection-start-column="8" selection-end-line="144" selection-end-column="8" />
+        <state relative-caret-position="308">
+          <caret line="139" column="47" selection-start-line="139" selection-start-column="47" selection-end-line="139" selection-end-column="47" />
           <folding>
             <element signature="e#25#34#0" expanded="true" />
           </folding>

@@ -137,7 +137,7 @@ def get_json(vin):
 
     # based on https://stackoverflow.com/questions/23013220/max-retries-exceeded-with-url
     session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=10.)
+    retry = Retry(connect=3, backoff_factor=0.5)
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
