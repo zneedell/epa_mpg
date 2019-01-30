@@ -6,3 +6,4 @@ sqlalchemy
 vinlib
 xlwings
 Retry
+pymongo

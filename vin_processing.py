@@ -17,8 +17,10 @@ from collections import OrderedDict
 from sqlalchemy import create_engine, MetaData, Table, Column
 from sqlite3 import OperationalError
 import vinlib
+from pymongo import MongoClient
+from multiprocessing.pool import ThreadPool
 
-#import xlwings as xl
+# import xlwings as xl
 import xlrd as xl
 
 db_name = r'data/epa_mpg.sqlite'
@@ -46,7 +48,8 @@ class UnicodeWriter:
     def writerow(self, row):
         # new_row = [(str(s) if type(s) == int else s).replace(u'\u2013',u'-').encode("utf-8") for s in row]
         new_row = [
-            re.sub(' +', ' ', ("" if s is None else str(s) if type(s) == int else s).replace(u'\u2013', u'-').encode("utf-8")) for
+            re.sub(' +', ' ',
+                   ("" if s is None else str(s) if type(s) == int else s).replace(u'\u2013', u'-').encode("utf-8")) for
             s in row]
         self.writer.writerow(new_row)
         # Fetch UTF-8 output from the queue ...
@@ -94,41 +97,45 @@ def flatten(y):
     _flatten(y)
     return out
 
+
 def get_and_encode(js, elem):
     return js['Results'][0][elem].encode("utf-8")
 
+
 def filter_json(js):
-    return {
-        'ABS': get_and_encode(js, 'ABS'),
-        'BodyCabType': get_and_encode(js, 'BodyCabType'),
-        'BodyClass': get_and_encode(js, 'BodyClass'),
-        'BrakeSystemType': get_and_encode(js, 'BrakeSystemType'),
-        'DisplacementCC': get_and_encode(js, 'DisplacementCC'),
-        'DisplacementCI': get_and_encode(js, 'DisplacementCI'),
-        'DisplacementL': get_and_encode(js, 'DisplacementL'),
-        'DriveType': get_and_encode(js, 'DriveType'),
-        'EngineConfiguration': get_and_encode(js, 'EngineConfiguration'),
-        'EngineCylinders': get_and_encode(js, 'EngineCylinders'),
-        'EngineManufacturer': get_and_encode(js, 'EngineManufacturer'),
-        'EngineModel': get_and_encode(js, 'EngineModel'),
-        'ErrorCode': get_and_encode(js, 'ErrorCode'),
-        'FuelInjectionType': get_and_encode(js, 'FuelInjectionType'),
-        'FuelTypePrimary': get_and_encode(js, 'FuelTypePrimary'),
-        'GVWR': get_and_encode(js, 'GVWR'),
-        'Make': get_and_encode(js, 'Make'),
-        'Manufacturer': get_and_encode(js, 'Manufacturer'),
-        'ManufacturerId': get_and_encode(js, 'ManufacturerId'),
-        'Model': get_and_encode(js, 'Model'),
-        'ModelYear': get_and_encode(js, 'ModelYear'),
-        'PlantCity': get_and_encode(js, 'PlantCity'),
-        'PlantCompanyName': get_and_encode(js, 'PlantCompanyName'),
-        'PlantCountry': get_and_encode(js, 'PlantCountry'),
-        'PlantState': get_and_encode(js, 'PlantState'),
-        'Series': get_and_encode(js, 'Series'),
-        'Turbo': get_and_encode(js, 'Turbo'),
-        'VIN': get_and_encode(js, 'VIN'),
-        'VehicleType': get_and_encode(js, 'VehicleType')
-    }
+    return js
+    # return {
+    #     'ABS': get_and_encode(js, 'ABS'),
+    #     'BodyCabType': get_and_encode(js, 'BodyCabType'),
+    #     'BodyClass': get_and_encode(js, 'BodyClass'),
+    #     'BrakeSystemType': get_and_encode(js, 'BrakeSystemType'),
+    #     'DisplacementCC': get_and_encode(js, 'DisplacementCC'),
+    #     'DisplacementCI': get_and_encode(js, 'DisplacementCI'),
+    #     'DisplacementL': get_and_encode(js, 'DisplacementL'),
+    #     'DriveType': get_and_encode(js, 'DriveType'),
+    #     'EngineConfiguration': get_and_encode(js, 'EngineConfiguration'),
+    #     'EngineCylinders': get_and_encode(js, 'EngineCylinders'),
+    #     'EngineManufacturer': get_and_encode(js, 'EngineManufacturer'),
+    #     'EngineModel': get_and_encode(js, 'EngineModel'),
+    #     'ErrorCode': get_and_encode(js, 'ErrorCode'),
+    #     'FuelInjectionType': get_and_encode(js, 'FuelInjectionType'),
+    #     'FuelTypePrimary': get_and_encode(js, 'FuelTypePrimary'),
+    #     'GVWR': get_and_encode(js, 'GVWR'),
+    #     'Make': get_and_encode(js, 'Make'),
+    #     'Manufacturer': get_and_encode(js, 'Manufacturer'),
+    #     'ManufacturerId': get_and_encode(js, 'ManufacturerId'),
+    #     'Model': get_and_encode(js, 'Model'),
+    #     'ModelYear': get_and_encode(js, 'ModelYear'),
+    #     'PlantCity': get_and_encode(js, 'PlantCity'),
+    #     'PlantCompanyName': get_and_encode(js, 'PlantCompanyName'),
+    #     'PlantCountry': get_and_encode(js, 'PlantCountry'),
+    #     'PlantState': get_and_encode(js, 'PlantState'),
+    #     'Series': get_and_encode(js, 'Series'),
+    #     'Turbo': get_and_encode(js, 'Turbo'),
+    #     'VIN': get_and_encode(js, 'VIN'),
+    #     'VehicleType': get_and_encode(js, 'VehicleType')
+    # }
+
 
 def get_json(vin):
     base_url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/{}?format=json&modelyear={}'
@@ -137,7 +144,7 @@ def get_json(vin):
 
     # based on https://stackoverflow.com/questions/23013220/max-retries-exceeded-with-url
     session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=0.5)
+    retry = Retry(connect=3, backoff_factor=0.1)
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
@@ -146,6 +153,23 @@ def get_json(vin):
         js = json.loads(session.get(url).text)
         js_ = filter_json(js)
         return OrderedDict(flatten(js_))
+    except:
+        return {}
+
+def fetch_json(vin):
+    base_url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/{}?format=json&modelyear={}'
+    year = vinlib.Vin(vin).year
+    url = base_url.format(vin, year)
+
+    session = requests.Session()
+    retry = Retry(connect=3, backoff_factor=0.1)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
+    try:
+        js = json.loads(session.get(url).text)
+        return js
     except:
         return {}
 
@@ -171,7 +195,7 @@ def get_data_parallel():
         dict_list.append(js)
         sys.stderr.write('\rDone {:.3%}'.format(i / n))
 
-    # js_list = p.map(get_json, vin_list) 
+    # js_list = p.map(get_json, vin_list)
     df = pd.DataFrame(dict_list)
     df.to_csv('out_parallel_in_memory.csv')
 
@@ -188,11 +212,19 @@ def get_data_parallel_stream(vin_list, file_path):
             sys.stderr.write('\rDone {}/{}={:.3%}'.format(i, n, float(i) / n))
             print(list(js.values()))
 
+
+
+def download_and_store_in_mongdb(vin_list, threadPool, mongo_col):
+    job = threadPool.map_async(fetch_json, vin_list, callback=mongo_col.insert_many)
+    job.wait()
+
+
+
 def get_data_stream(vin_list, file_path):
     n = len(vin_list)
     missing_vins = []
     with open(file_path, 'wb') as f:
-        #wr = UnicodeWriter(f, quoting=csv.QUOTE_ALL)
+        # wr = UnicodeWriter(f, quoting=csv.QUOTE_ALL)
         wr = csv.writer(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         for i, vin in enumerate(vin_list):
             js = get_json(vin)
@@ -206,8 +238,9 @@ def get_data_stream(vin_list, file_path):
     return missing_vins
 
 
+
 def take_out_results_string(file_path):
-    """ Remove the leading string from the columns names of the output file. 
+    """ Remove the leading string from the columns names of the output file.
 
     Args:
         file_path (str): name of the ouput file
@@ -225,7 +258,7 @@ def take_out_results_string(file_path):
     book.close()
 
 
-# Another way to remove the string 'Results_0_' from the csv file. 
+# Another way to remove the string 'Results_0_' from the csv file.
 def fix_column_names(vin_df, file_path, change_in_file=False):
     cols_mod = []
     for col in vin_df.columns:
@@ -247,10 +280,10 @@ def fix_column_names(vin_df, file_path, change_in_file=False):
 
 def fix_vin_output_file(file_path):
     """Remove extra columns from the file that was just read based on the existing SQL table that contains the VINs.
-    
+
     Args:
         file_path (TYPE): Description
-    
+
     Returns:
         TYPE: Description
     """
