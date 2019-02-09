@@ -14,8 +14,8 @@ from itertools import combinations
 from collections import OrderedDict
 import operator
 
-VIN_path = '../Vehicles_Merged.csv'
-EPA_path = '../vehicles19.csv'
+VIN_path = '../vehicles.csv'
+EPA_path = '../vehicles_epa.csv'
 
 def load(VIN_path,EPA_path):
     vin = pd.read_csv(VIN_path, dtype=str, encoding='utf8')
