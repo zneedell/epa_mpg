@@ -14,8 +14,8 @@ from itertools import combinations
 from collections import OrderedDict
 import operator
 
-VIN_path = '../vehicles.csv'
-EPA_path = '../vehicles_epa.csv'
+VIN_path = 'vehicles.csv'
+EPA_path = 'vehicles_epa.csv'
 
 def load(VIN_path,EPA_path):
     vin = pd.read_csv(VIN_path, dtype=str, encoding='utf8')
@@ -47,6 +47,10 @@ def mod_makes(vin, epa):
 
 def mod_models(vin, epa):
 	# Modify models. 
+    # Explorer Sport Trac
+    vin.loc[(vin.model == 'explorer sport trac'), 'model_mod'] = 'explorersport'
+    # Taurus
+    vin.loc[(vin.model == 'taurus x'), 'model_mod'] = 'taurusx'
 	# Cadillac. 
 	vin.loc[(vin.make == 'cadillac') & (vin.model.str.contains('xts')) & vin.Series.str.contains('livery'), 
 		'model_mod'] = 'xtslimo'
@@ -657,7 +661,7 @@ def modify(vin_original, epa_original):
 	epa.loc[epa.VClass.str.contains('vans'), 'vtyp'] = 'van'
 	epa.loc[epa.VClass.str.contains('purpose'), 'vtyp'] = 'pur'
 
-	model_str = 'pt|hhr|escape|pacifica|equinox|vue|santa|magnum|edge|captiva|trax|ecosport|rav4|highlander|'\
+	model_str = 'crv|macan|pt|hhr|escape|pacifica|equinox|vue|santa|magnum|edge|captiva|trax|ecosport|rav4|highlander|'\
 	'rendezvous|freestyle|srx|flex|mkx|mkc|mkt|xt5|mariner|enclave|compass|traverse|torrent|aztek|acadia|terrain|'\
 	'patriot|encore|envision|outlook|tiguan|touareg|allroad|q3|q5|q7|x6|x3|x5|rogue|cube|juke|murano|crosstour|x|'\
 	'pilot|element|tribute|r350|r500|gl320|gl420|glk350|cayenne|94x|freelander|baja|forester|b9|venza|xc70|xc40|'\
@@ -757,7 +761,7 @@ def add_type_from_vin(vin, default_type='0'):
 		(vin.year <= 2011) & vin.VIN.apply(lambda x: x[5]).isin('5, 6'.split(', ')), 'type_from_vin'] = '45'
 	vin.loc[(vin.make == 'dodge') & (vin.model_mod.str.contains(model_str)) &
 		(vin.year <= 2011) & (vin.VIN.apply(lambda x: x[5]) == '7'), 'type_from_vin'] = '55'
-	# Through 2015.
+	# Through 2018.
 	vin.loc[(vin.make == 'dodge') & (vin.model_mod.str.contains(model_str)) & (vin.year > 2011) & 
 		((vin.VIN.apply(lambda x: x[5]).isin('A, 6, B, 7'.split(', '))) | 
 			(vin.VIN.apply(lambda x: x[5:6]).isin('VA, VB, VN'.split(', ')))),
@@ -767,7 +771,7 @@ def add_type_from_vin(vin, default_type='0'):
 			(vin.VIN.apply(lambda x: x[5:6]).isin('VC, VD, VP, VS, VT'.split(', ')))),
 		'type_from_vin'] = '25'
 	vin.loc[(vin.make == 'dodge') & (vin.model_mod.str.contains(model_str)) & (vin.year > 2011) & 
-		((vin.VIN.apply(lambda x: x[5]).isin('P, S, 2, 8, R, T, 3, 9'.split(', '))) | 
+		((vin.VIN.apply(lambda x: x[5]).isin('C, P, S, 2, 8, D, R, T, 3, 9'.split(', '))) | 
 			(vin.VIN.apply(lambda x: x[5:6]).isin('VE, VF, VG, VH, VI, VJ, VK, VL, VM, VR'.split(', ')))),
 		'type_from_vin'] = '35'
 	# Chevrolet.
@@ -800,11 +804,11 @@ def add_type_from_vin(vin, default_type='0'):
 		vin.model_mod.str.contains(chevy_model_str) & vin.VIN.apply(lambda x: x[5]).isin('Z,0,1'.lower().split(',')),
 		'type_from_vin'] = '35'	
 	## 2015.
-	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(chevy_model_str) &
-		vin.VIN.apply(lambda x: x[5]).isin('P,R,S,T'.lower().split(',')), 'type_from_vin'] = '15'	
-	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(chevy_model_str) &
+	vin.loc[(vin.make == 'chevrolet') & (vin.year >= 2015) & vin.model_mod.str.contains(chevy_model_str) &
+		vin.VIN.apply(lambda x: x[5]).isin('P,R,S,T,N,9'.lower().split(',')), 'type_from_vin'] = '15'	
+	vin.loc[(vin.make == 'chevrolet') & (vin.year >= 2015) & vin.model_mod.str.contains(chevy_model_str) &
 		vin.VIN.apply(lambda x: x[5]).isin('U,V,W,X'.lower().split(',')), 'type_from_vin'] = '25'	
-	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(chevy_model_str) &
+	vin.loc[(vin.make == 'chevrolet') & (vin.year >= 2015) & vin.model_mod.str.contains(chevy_model_str) &
 		vin.VIN.apply(lambda x: x[5]).isin('Y,Z,0,1'.lower().split(',')), 'type_from_vin'] = '35'	
 	## For gmc. 
 	## 2010 to 2014.
@@ -824,7 +828,13 @@ def add_type_from_vin(vin, default_type='0'):
 		vin.VIN.apply(lambda x: x[5]).isin('X,Y,Z,0'.lower().split(',')), 'type_from_vin'] = '25'	
 	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
 		vin.VIN.apply(lambda x: x[5]).isin('1,2,3,4'.split(',')), 'type_from_vin'] = '35'
-
+	## 2016 - 2018.
+	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
+		vin.VIN.apply(lambda x: x[5]).isin('L,M,N,P,9'.lower().split(',')), 'type_from_vin'] = '15'	
+	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
+		vin.VIN.apply(lambda x: x[5]).isin('R,S,T,U'.lower().split(',')), 'type_from_vin'] = '25'	
+	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
+		vin.VIN.apply(lambda x: x[5]).isin('V,W,X,Y'.split(',')), 'type_from_vin'] = '35'
 	return vin
 
 def comb_list(l):
