@@ -16,12 +16,14 @@ import operator
 
 VIN_path = 'vehicles.csv'
 EPA_path = 'vehicles_epa.csv'
+count_path = 'counts_for_ZN.txt'
 
 def load(VIN_path,EPA_path):
     vin = pd.read_csv(VIN_path, dtype=str, encoding='utf8')
     #df.columns.values[:] = [col.split('_')[-1] for col in df.columns]
     epa = pd.read_csv(EPA_path, dtype=str, encoding='utf8')
-    return vin, epa
+    counts = pd.read_csv(count_path,names=['first','second','counts'], encoding='utf8')
+    return vin, epa, counts
 
 def mod_makes(vin, epa):
 	# Modify makes. 
@@ -48,12 +50,11 @@ def mod_makes(vin, epa):
 def mod_models(vin, epa):
 	# Modify models. 
     # Explorer Sport Trac
-    vin.loc[(vin.model == 'explorer sport trac'), 'model_mod'] = 'explorersport'
     # Taurus
-    vin.loc[(vin.model == 'taurus x'), 'model_mod'] = 'taurusx'
+	vin.loc[(vin.model == 'explorer sport trac'), 'model_mod'] = 'explorersport'
+	vin.loc[(vin.model == 'taurus x'), 'model_mod'] = 'taurusx'
 	# Cadillac. 
-	vin.loc[(vin.make == 'cadillac') & (vin.model.str.contains('xts')) & vin.Series.str.contains('livery'), 
-		'model_mod'] = 'xtslimo'
+	vin.loc[(vin.make == 'cadillac') & (vin.model.str.contains('xts')) & vin.Series.str.contains('livery'), 'model_mod'] = 'xtslimo'
 	epa.loc[(epa.make == 'cadillac') & (epa.model.str.contains('(?=.*xts.*)(?=.*(limo|hearse).*)')), 
 		'model_mod'] = 'xtslimo'
 	# For Lexus models, drop the numbers. 
@@ -89,7 +90,7 @@ def mod_models(vin, epa):
 			lambda s: re.sub(r'(.*?)x(?=$|\s).*', r'\1', s))
 	## Nissan. 
 	epa.loc[(epa.make == 'nissan'), 'model_mod'] = \
-		epa.loc[(epa.make == 'nissan'), 'model_mod'].replace('truck', 'pickup', regex=True)
+        epa.loc[(epa.make == 'nissan'), 'model_mod'].replace('truck', 'pickup', regex=True)
 	epa.loc[epa.model.str.contains('pathfinder armada'), 'model_mod']	= 'armada'
 	## BMW. 
 	epa.loc[(epa.make == 'bmw'), 'model_mod'] = epa.loc[(epa.make == 'bmw'), 'model_mod'].apply(lambda s: s[0])
@@ -224,7 +225,7 @@ def mod_models(vin, epa):
 
 
 
-def fix(vin, epa, init_yr=1991, last_yr=np.inf):
+def fix(vin, epa, counts, init_yr=1991, last_yr=np.inf):
 	
 	vin_original, epa_original = vin.copy(), epa.copy()
 
@@ -479,6 +480,12 @@ def fix(vin, epa, init_yr=1991, last_yr=np.inf):
 
 	# Add an ID for EPA before the splitting occurs. Equivalent to VIN. 
 	epa_original['EPA'] = list(range(1, len(epa_original) + 1))
+	counts = counts.applymap(lambda s:s.lower() if type(s) == unicode else s)   
+
+	vin_original['first'] = vin_original['VIN'].str[:8]
+	vin_original['second'] = vin_original['VIN'].str[9:12]
+	vin_original = pd.merge(vin_original, counts, on=['first','second'])
+	vin_original.loc[np.isnan(vin_original['counts']),'counts'] = 0
 
 	return vin_original, epa_original
 
@@ -581,8 +588,8 @@ def modify(vin_original, epa_original):
 	vin, epa = vin_original.copy(), epa_original.copy()
 
 	# Make the counts integers. 
-	vin['counts'] = 1#vin['counts'].astype(int)
-#	vin.loc[vin.counts <= 0, 'counts'] = 1
+	vin['counts'] = vin['counts'].astype(int)
+	vin.loc[vin.counts <= 0, 'counts'] = 1
 
 	# Modify transmission information
 	## In vin DB: turn transmission speeds into integers then strings.
@@ -829,12 +836,12 @@ def add_type_from_vin(vin, default_type='0'):
 	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
 		vin.VIN.apply(lambda x: x[5]).isin('1,2,3,4'.split(',')), 'type_from_vin'] = '35'
 	## 2016 - 2018.
-	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
+	vin.loc[(vin.make == 'chevrolet') & (vin.year > 2015) & vin.model_mod.str.contains(gmc_model_str) &
 		vin.VIN.apply(lambda x: x[5]).isin('L,M,N,P,9'.lower().split(',')), 'type_from_vin'] = '15'	
-	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
+	vin.loc[(vin.make == 'chevrolet') & (vin.year > 2015) & vin.model_mod.str.contains(gmc_model_str) &
 		vin.VIN.apply(lambda x: x[5]).isin('R,S,T,U'.lower().split(',')), 'type_from_vin'] = '25'	
-	vin.loc[(vin.make == 'chevrolet') & (vin.year == 2015) & vin.model_mod.str.contains(gmc_model_str) &
-		vin.VIN.apply(lambda x: x[5]).isin('V,W,X,Y'.split(',')), 'type_from_vin'] = '35'
+	vin.loc[(vin.make == 'chevrolet') & (vin.year > 2015) & vin.model_mod.str.contains(gmc_model_str) &
+		vin.VIN.apply(lambda x: x[5]).isin('V,W,X,Y'.lower().split(',')), 'type_from_vin'] = '35'
 	return vin
 
 def comb_list(l):
@@ -1204,12 +1211,12 @@ def gen_missing_mpgs(vin, epa, ignore_vins):
 def modify_both_before_split(vin_mod, epa_mod):
 	## Lumina model.
 	pattern = r'(?=.*lumina.*)(?=.*(apv|minivan).*)'
-	epa_mod.loc[epa_mod.model.str.contains(pattern), 'model_mod'], 
-	vin_mod.loc[vin_mod.model.str.contains(pattern), 'model_mod'] = 'luminaapv'
+	epa_mod.loc[epa_mod.model.astype(str).str.contains(pattern), 'model_mod'], 
+	vin_mod.loc[vin_mod.model.astype(str).str.contains(pattern), 'model_mod'] = 'luminaapv'
 	# For Saab and Honda models, drop the dash. Note that this could be done after the splitting is done also. 
 	for df in vin_mod, epa_mod:
-		df.loc[df.make.str.contains('saab|honda'), 'model_mod'] = \
-			df.loc[df.make.str.contains('saab|honda'), 'model_mod'].str.replace('-', '')
+		df.loc[df.make.astype(str).str.contains('saab|honda'), 'model_mod'] = \
+			df.loc[df.make.astype(str).str.contains('saab|honda'), 'model_mod'].astype(str).str.replace('-', '')
 
 	return vin_mod, epa_mod
 
@@ -1332,8 +1339,8 @@ def replace_spaces(s, pattern, replace_with='-'):
 
 
 def main():
-    vin_original, epa_original = load(VIN_path,EPA_path)
-    vin_original_fixed, epa_original_fixed = fix(vin_original, epa_original, init_yr=0)
+    vin_original, epa_original, counts = load(VIN_path,EPA_path)
+    vin_original_fixed, epa_original_fixed = fix(vin_original, epa_original, counts, init_yr=0)
     #run merge
     vin_expanded, epa_expanded = split_and_expand(vin_original_fixed, epa_original_fixed)
     vin, epa = modify(vin_expanded, epa_expanded)
